@@ -3,16 +3,37 @@ set -euo pipefail
 
 VERSION="0.0.1"
 
+snapshot() {
+    echo "machina-trace snapshot"
+    echo
+
+    echo "== Lustre mounts =="
+    if ! mount | grep -E 'type lustre'; then
+        echo "No Lustre mounts found"
+    fi
+
+    echo
+    echo "== Lustre stats files =="
+    if ! find /proc/fs/lustre -name stats -type f 2>/dev/null; then
+        echo "No Lustre stats files found"
+    fi
+}
+
 case "${1:-help}" in
     snapshot)
-        echo "machina-trace snapshot"
+        snapshot
         ;;
     version)
         echo "$VERSION"
         ;;
-    *)
+    help|--help|-h)
         echo "Usage:"
         echo "  machina-trace snapshot"
         echo "  machina-trace version"
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "Try: machina-trace help" >&2
+        exit 1
         ;;
 esac
