@@ -3,14 +3,42 @@ set -euo pipefail
 
 VERSION="0.0.1"
 
+md_stats_files() {
+    find /proc/fs/lustre -name md_stats -type f 2>/dev/null | sort
+}
+
+read_md_counters() {
+    for f in $(md_stats_files); do
+        awk '
+            $2 ~ /^[0-9]+$/ && $3 == "samples" {
+                key=$1
+                val=$2
+                counters[key] += val
+            }
+            END {
+                for (key in counters) {
+                    print key, counters[key]
+                }
+            }
+        ' "$f"
+    done | awk '
+        {
+            counters[$1] += $2
+        }
+        END {
+            for (key in counters) {
+                print key, counters[key]
+            }
+        }
+    '
+}
+
 snapshot() {
     echo "machina-trace snapshot"
     echo
 
     echo "== Lustre mounts =="
-    if ! mount | grep -E 'type lustre'; then
-        echo "No Lustre mounts found"
-    fi
+    mount | grep -E 'type lustre' || echo "No Lustre mounts found"
 
     echo
     echo "== Lustre stats files =="
@@ -18,16 +46,52 @@ snapshot() {
 
     echo
     echo "== Lustre metadata stats =="
-    for f in $(find /proc/fs/lustre -name md_stats -type f 2>/dev/null | sort); do
+    for f in $(md_stats_files); do
         echo "--- $f ---"
         cat "$f"
         echo
     done
 }
 
+profile() {
+    duration="${1:-10}"
+
+    before="$(mktemp)"
+    after="$(mktemp)"
+    trap 'rm -f "$before" "$after"' RETURN
+
+    read_md_counters | sort > "$before"
+    sleep "$duration"
+    read_md_counters | sort > "$after"
+
+    echo "machina-trace profile"
+    echo "Duration: ${duration}s"
+    echo
+    echo "Metadata operations/s"
+    echo
+
+    awk -v duration="$duration" '
+        FNR == NR {
+            before[$1] = $2
+            next
+        }
+        {
+            op=$1
+            delta=$2 - before[op]
+            rate=delta / duration
+            if (delta > 0) {
+                printf "%-20s %10.2f\n", op, rate
+            }
+        }
+    ' "$before" "$after"
+}
+
 case "${1:-help}" in
     snapshot)
         snapshot
+        ;;
+    profile)
+        profile "${2:-10}"
         ;;
     version)
         echo "$VERSION"
@@ -35,6 +99,7 @@ case "${1:-help}" in
     help|--help|-h)
         echo "Usage:"
         echo "  machina-trace snapshot"
+        echo "  machina-trace profile [seconds]"
         echo "  machina-trace version"
         ;;
     *)
