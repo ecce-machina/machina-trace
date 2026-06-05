@@ -87,13 +87,29 @@ profile() {
 		}
 		END {
 			metadata_rate = rates["create"] + rates["unlink"] + rates["setattr"] + rates["getattr"] + rates["intent_lock"] + rates["revalidate_lock"]
+            
+            print ""
+            print "Workload Signature"
+            print ""
+
+            if (metadata_rate < 1) {
+                intensity = "IDLE"
+            } else if (metadata_rate < 100) {
+                intensity = "LOW"
+            } else if (metadata_rate < 1000) {
+                intensity = "Medium"
+            } else {
+                intensity = "HIGH"
+            }
+
+            print "Metadata intensity: " intensity
 
 			print ""
 			print "Classification:"
 
 			if (metadata_rate < 1) {
 				print "  idle"
-			} else if (rates["create"] > 10 || rates["unlink"] > 10 && rates["close"] > 10) {
+			} else if ((rates["create"] > 10 || rates["unlink"] > 10) && rates["close"] > 10) {
 				print "  small-file metadata workload"
             } else if (rates["getattr"] > 10 || rates["revalidate_lock"] > 10) {
                 print "  metadata scan / namespace walk"
