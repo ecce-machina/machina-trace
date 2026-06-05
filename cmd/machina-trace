@@ -14,8 +14,6 @@ snapshot() {
 
     echo
     echo "== Lustre stats files =="
-    echo
-    echo "== Lustre stats files =="
     find /proc/fs/lustre \( -name stats -o -name md_stats \) -type f 2>/dev/null | sort || true
 
     echo
