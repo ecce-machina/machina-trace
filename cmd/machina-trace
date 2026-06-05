@@ -55,6 +55,7 @@ snapshot() {
 
 profile() {
     duration="${1:-10}"
+    format="${2:-text}"
 
     before="$(mktemp)"
     after="$(mktemp)"
@@ -70,7 +71,7 @@ profile() {
     echo "Metadata operations/s"
     echo
 
-    awk -v duration="$duration" '
+    awk -v duration="$duration" -v format="$format" '
 		FNR == NR {
 			before[$1] = $2
 			next
@@ -82,8 +83,10 @@ profile() {
 			rates[op]=rate
 
 			if (delta > 0) {
-				printf "%-20s %10.2f\n", op, rate
-			}
+			#	printf "%-20s %10.2f\n", op, rate
+			    rates[op] = rate
+                ops[op] = 1
+            }
 		}
 		END {
 			metadata_rate = rates["create"] + rates["unlink"] + rates["setattr"] + rates["getattr"] + rates["intent_lock"] + rates["revalidate_lock"]
@@ -92,31 +95,52 @@ profile() {
             print "Workload Signature"
             print ""
 
-            if (metadata_rate < 1) {
-                intensity = "IDLE"
-            } else if (metadata_rate < 100) {
-                intensity = "LOW"
-            } else if (metadata_rate < 1000) {
-                intensity = "Medium"
-            } else {
-                intensity = "HIGH"
-            }
-
-            print "Metadata intensity: " intensity
-
 			print ""
 			print "Classification:"
 
 			if (metadata_rate < 1) {
-				print "  idle"
+				classification = "idle"
 			} else if ((rates["create"] > 10 || rates["unlink"] > 10) && rates["close"] > 10) {
-				print "  small-file metadata workload"
+				classification = "small-file metadata workload"
             } else if (rates["getattr"] > 10 || rates["revalidate_lock"] > 10) {
-                print "  metadata scan / namespace walk"
+                classification = "metadata scan / namespace walk"
 			} else if (rates["intent_lock"] > 100) {
-				print "  metadata-heavy namespace workload"
+				classification = "metadata-heavy namespace workload"
 			} else {
-				print "  metadata-active workload"
+				classification = "metadata-active workload"
+			}
+            if (format == "--json") {
+				print "{"
+				print "  \"duration\": " duration ","
+				print "  \"classification\": \"" classification "\","
+				print "  \"operations_per_second\": {"
+
+				first = 1
+				for (op in ops) {
+					if (!first) {
+						print ","
+					}
+					printf "    \"%s\": %.2f", op, rates[op]
+					first = 0
+				}
+
+				print ""
+				print "  }"
+				print "}"
+			} else {
+				print "machina-trace profile"
+				print "Duration: " duration "s"
+				print ""
+				print "Metadata operations/s"
+				print ""
+
+				for (op in ops) {
+					printf "%-20s %10.2f\n", op, rates[op]
+				}
+
+				print ""
+				print "Classification:"
+				print "  " classification
 			}
 		}
     ' "$before" "$after"
