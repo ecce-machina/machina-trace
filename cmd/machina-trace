@@ -93,8 +93,10 @@ profile() {
 
 			if (metadata_rate < 1) {
 				print "  idle"
-			} else if (rates["create"] > 10 || rates["unlink"] > 10) {
+			} else if (rates["create"] > 10 || rates["unlink"] > 10 && rates["close"] > 10) {
 				print "  small-file metadata workload"
+            } else if (rates["getattr"] > 10 || rates["revalidate_lock"] > 10) {
+                print "  metadata scan / namespace walk"
 			} else if (rates["intent_lock"] > 100) {
 				print "  metadata-heavy namespace workload"
 			} else {
