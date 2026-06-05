@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="0.0.1"
+
+case "${1:-help}" in
+    snapshot)
+        echo "machina-trace snapshot"
+        ;;
+    version)
+        echo "$VERSION"
+        ;;
+    *)
+        echo "Usage:"
+        echo "  machina-trace snapshot"
+        echo "  machina-trace version"
+        ;;
+esac
