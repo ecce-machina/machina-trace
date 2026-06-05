@@ -14,9 +14,17 @@ snapshot() {
 
     echo
     echo "== Lustre stats files =="
-    if ! find /proc/fs/lustre -name stats -type f 2>/dev/null; then
-        echo "No Lustre stats files found"
-    fi
+    echo
+    echo "== Lustre stats files =="
+    find /proc/fs/lustre \( -name stats -o -name md_stats \) -type f 2>/dev/null | sort || true
+
+    echo
+    echo "== Lustre metadata stats =="
+    for f in $(find /proc/fs/lustre -name md_stats -type f 2>/dev/null | sort); do
+        echo "--- $f ---"
+        cat "$f"
+        echo
+    done
 }
 
 case "${1:-help}" in
