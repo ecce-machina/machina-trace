@@ -1,0 +1,8 @@
+machina-trace profile
+Duration: 10s
+
+Metadata operations/s
+
+
+Classification:
+  idle
