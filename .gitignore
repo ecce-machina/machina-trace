@@ -1,0 +1,16 @@
+# Go binaries
+machina-agent
+machina-trace
+
+# Build output
+bin/
+
+# Test binaries
+*.test
+
+# Coverage
+*.out
+coverage.out
+
+# macOS
+.DS_Store
