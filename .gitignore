@@ -1,6 +1,6 @@
 # Go binaries
-machina-agent
-machina-trace
+/machina-agent
+/machina-trace
 
 # Build output
 bin/

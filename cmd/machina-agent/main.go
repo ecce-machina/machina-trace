@@ -101,6 +101,9 @@ func runDiff(beforePath, afterPath string) {
 		fmt.Printf(" interval=%.2fs\n", d.IntervalSec)
 
 		for name, rate := range d.Rates {
+            if rate == 0 {
+                continue
+            }
 			fmt.Printf("  %s_per_sec: %.2f\n", name, rate)
 		}
 	}
