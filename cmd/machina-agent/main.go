@@ -7,11 +7,43 @@ import (
 	"time"
 
 	"github.com/ecce-machina/machina-trace/internal/collectors"
+	"github.com/ecce-machina/machina-trace/internal/diff"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
 )
 
 func main() {
-	host, _ := os.Hostname()
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "snapshot":
+		runSnapshot()
+	case "diff":
+		if len(os.Args) != 4 {
+			usage()
+			os.Exit(1)
+		}
+		runDiff(os.Args[2], os.Args[3])
+	default:
+		usage()
+		os.Exit(1)
+	}
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "usage:\n")
+	fmt.Fprintf(os.Stderr, "  machina-agent snapshot\n")
+	fmt.Fprintf(os.Stderr, "  machina-agent diff before.json after.json\n")
+}
+
+func runSnapshot() {
+	host, err := os.Hostname()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to determine hostname: %v\n", err)
+		os.Exit(1)
+	}
 
 	allCollectors := []collectors.Collector{
 		collectors.NewMeminfoCollector("/proc/meminfo"),
@@ -43,5 +75,33 @@ func main() {
 	if err := enc.Encode(s); err != nil {
 		fmt.Fprintf(os.Stderr, "json encode failed: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func runDiff(beforePath, afterPath string) {
+	before, err := snapshot.ReadFile(beforePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "read %s: %v\n", beforePath, err)
+		os.Exit(1)
+	}
+
+	after, err := snapshot.ReadFile(afterPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "read %s: %v\n", afterPath, err)
+		os.Exit(1)
+	}
+
+	deltas := diff.DiffSnapshots(before, after)
+
+	for _, d := range deltas {
+		fmt.Printf("%s", d.Collector)
+		if d.Object != "" {
+			fmt.Printf(" %s", d.Object)
+		}
+		fmt.Printf(" interval=%.2fs\n", d.IntervalSec)
+
+		for name, rate := range d.Rates {
+			fmt.Printf("  %s_per_sec: %.2f\n", name, rate)
+		}
 	}
 }
