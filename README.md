@@ -9,11 +9,11 @@ This is the idea, have ways to inquire about a compute side workload signature w
         |               |               |
      procfs         filesystem        eBPF
         |               |               |
-   +---------+   +------+------+   +---------+
+   +---------+   +------+--------+   +---------+
    | vmstat  |   | Lustre | Ceph |   | syscalls|
    | meminfo |   | BeeGFS | NFS  |   | VFS     |
    | disks   |   | GPFS   | ...  |   | block   |
-   +---------+   +------+------+   +---------+
+   +---------+   +------+--------+   +---------+
                         |
                   unified Snapshot
 ```
