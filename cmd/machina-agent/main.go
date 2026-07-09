@@ -8,6 +8,7 @@ import (
 
 	"github.com/ecce-machina/machina-trace/internal/collectors"
 	"github.com/ecce-machina/machina-trace/internal/diff"
+	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
 )
 
@@ -93,18 +94,7 @@ func runDiff(beforePath, afterPath string) {
 
 	deltas := diff.DiffSnapshots(before, after)
 
-	for _, d := range deltas {
-		fmt.Printf("%s", d.Collector)
-		if d.Object != "" {
-			fmt.Printf(" %s", d.Object)
-		}
-		fmt.Printf(" interval=%.2fs\n", d.IntervalSec)
+	render.WriteDiskFeaturesText(os.Stdout, deltas)
+	render.WriteDiffText(os.Stdout, deltas)
 
-		for name, rate := range d.Rates {
-            if rate == 0 {
-                continue
-            }
-			fmt.Printf("  %s_per_sec: %.2f\n", name, rate)
-		}
-	}
 }
