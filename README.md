@@ -1,6 +1,6 @@
 This is the idea, have ways to inquire about a compute side workload signature with the following data points
 
-               +-------------------+
+```               +-------------------+
                |  machina-agent    |
                +-------------------+
                         |
@@ -15,3 +15,4 @@ This is the idea, have ways to inquire about a compute side workload signature w
    +---------+   +------+------+   +---------+
                         |
                   unified Snapshot
+```
