@@ -12,5 +12,10 @@ bin/
 *.out
 coverage.out
 
+# vim
+*.swp
+*.swo
+*~
+
 # macOS
 .DS_Store

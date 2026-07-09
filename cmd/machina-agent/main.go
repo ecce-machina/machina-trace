@@ -23,10 +23,10 @@ func main() {
 		runSnapshot()
 	case "diff":
 		if len(os.Args) == 4 {
-			runDiff(os.Args[2], os.Args[3], false)
-		} else if len(os.Args) == 5 && os.Args[2] == "--raw" {
-			runDiff(os.Args[3], os.Args[4], true)
-		} else {
+      runDiff(os.Args[2], os.Args[3], false)
+    } else if len(os.Args) == 5 && os.Args[2] == "--raw" {
+      runDiff(os.Args[3], os.Args[4], true)
+    } else {
 			usage()
 			os.Exit(1)
 		}
@@ -54,6 +54,7 @@ func runSnapshot() {
 		collectors.NewMeminfoCollector("/proc/meminfo"),
 		collectors.NewVMStatCollector("/proc/vmstat"),
 		collectors.NewDiskstatsCollector("/proc/diskstats"),
+    collectors.NewMountinfoCollector("/proc/self/mountinfo"),
 	}
 
 	var sources []snapshot.Source
@@ -99,8 +100,8 @@ func runDiff(beforePath, afterPath string, raw bool) {
 	deltas := diff.DiffSnapshots(before, after)
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
-	if raw {
-		render.WriteDiffText(os.Stdout, deltas)
-	}
+  if raw {
+    render.WriteDiffText(os.Stdout, deltas)
+  }
 
 }
