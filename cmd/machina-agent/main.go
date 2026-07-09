@@ -22,11 +22,14 @@ func main() {
 	case "snapshot":
 		runSnapshot()
 	case "diff":
-		if len(os.Args) != 4 {
+		if len(os.Args) == 4 {
+			runDiff(os.Args[2], os.Args[3], false)
+		} else if len(os.Args) == 5 && os.Args[2] == "--raw" {
+			runDiff(os.Args[3], os.Args[4], true)
+		} else {
 			usage()
 			os.Exit(1)
 		}
-		runDiff(os.Args[2], os.Args[3])
 	default:
 		usage()
 		os.Exit(1)
@@ -37,6 +40,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "usage:\n")
 	fmt.Fprintf(os.Stderr, "  machina-agent snapshot\n")
 	fmt.Fprintf(os.Stderr, "  machina-agent diff before.json after.json\n")
+	fmt.Fprintf(os.Stderr, "  machina-agent diff --raw before.json after.json\n")
 }
 
 func runSnapshot() {
@@ -79,7 +83,7 @@ func runSnapshot() {
 	}
 }
 
-func runDiff(beforePath, afterPath string) {
+func runDiff(beforePath, afterPath string, raw bool) {
 	before, err := snapshot.ReadFile(beforePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read %s: %v\n", beforePath, err)
@@ -95,6 +99,8 @@ func runDiff(beforePath, afterPath string) {
 	deltas := diff.DiffSnapshots(before, after)
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
-	render.WriteDiffText(os.Stdout, deltas)
+	if raw {
+		render.WriteDiffText(os.Stdout, deltas)
+	}
 
 }
