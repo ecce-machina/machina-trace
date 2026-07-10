@@ -2,18 +2,20 @@ package features
 
 import "github.com/ecce-machina/machina-trace/internal/diff"
 
-type NetworkStats struct {
-	RXBytesPerSec   float64
-	TXBytesPerSec   float64
-	RXPacketsPerSec float64
-	TXPacketsPerSec float64
-	RXErrorsPerSec  float64
-	TXErrorsPerSec  float64
-	RXDropsPerSec   float64
-	TXDropsPerSec   float64
+type NetworkFeatures struct {
+	Object                string
+	IntervalSec           float64
+	ReceiveBytesPerSec    float64
+	TransmitBytesPerSec   float64
+	ReceivePacketsPerSec  float64
+	TransmitPacketsPerSec float64
+	ReceiveErrorsPerSec   float64
+	TransmitErrorsPerSec  float64
+	ReceiveDropsPerSec    float64
+	TransmitDropsPerSec   float64
 }
 
-func NetworkFeatures(d diff.CounterDelta) (NetworkStats, bool) {
+func FromNetdevDelta(d diff.CounterDelta) (NetworkFeatures, bool) {
 	if d.Collector != "proc_net_dev" {
 		return NetworkFeatures{}, false
 	}
@@ -31,4 +33,3 @@ func NetworkFeatures(d diff.CounterDelta) (NetworkStats, bool) {
 		TransmitDropsPerSec:   d.Rates["transmit_dropped"],
 	}, true
 }
-
