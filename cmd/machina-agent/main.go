@@ -90,6 +90,7 @@ func runDiff(beforePath, afterPath string, raw bool) {
 	deltas := diff.DiffSnapshots(before, after)
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
+    render.WriteNetworkFeaturesText(os.Stdout, deltas)
 	if raw {
 		render.WriteDiffText(os.Stdout, deltas)
 	}

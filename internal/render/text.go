@@ -51,3 +51,34 @@ func WriteDiskFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 		fmt.Fprintf(w, "  avg_write_size_bytes: %.2f\n", f.AvgWriteSizeBytes)
 	}
 }
+
+func WriteNetworkFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
+	for _, d := range deltas {
+		f, ok := features.FromNetdevDelta(d)
+		if !ok {
+			continue
+		}
+
+		if f.ReceiveBytesPerSec == 0 &&
+			f.TransmitBytesPerSec == 0 &&
+			f.ReceivePacketsPerSec == 0 &&
+			f.TransmitPacketsPerSec == 0 &&
+			f.ReceiveErrorsPerSec == 0 &&
+			f.TransmitErrorsPerSec == 0 &&
+			f.ReceiveDropsPerSec == 0 &&
+			f.TransmitDropsPerSec == 0 {
+			continue
+		}
+
+		fmt.Fprintf(w, "network_features %s interval=%.2fs\n", f.Object, f.IntervalSec)
+		fmt.Fprintf(w, "  receive_bytes_per_sec: %.2f\n", f.ReceiveBytesPerSec)
+		fmt.Fprintf(w, "  transmit_bytes_per_sec: %.2f\n", f.TransmitBytesPerSec)
+		fmt.Fprintf(w, "  receive_packets_per_sec: %.2f\n", f.ReceivePacketsPerSec)
+		fmt.Fprintf(w, "  transmit_packets_per_sec: %.2f\n", f.TransmitPacketsPerSec)
+		fmt.Fprintf(w, "  receive_errors_per_sec: %.2f\n", f.ReceiveErrorsPerSec)
+		fmt.Fprintf(w, "  transmit_errors_per_sec: %.2f\n", f.TransmitErrorsPerSec)
+		fmt.Fprintf(w, "  receive_drops_per_sec: %.2f\n", f.ReceiveDropsPerSec)
+		fmt.Fprintf(w, "  transmit_drops_per_sec: %.2f\n", f.TransmitDropsPerSec)
+	}
+}
+
