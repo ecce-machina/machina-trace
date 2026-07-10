@@ -18,7 +18,7 @@ func New() *Provider {
 			collectors.NewVMStatCollector("/proc/vmstat"),
 			collectors.NewDiskstatsCollector("/proc/diskstats"),
 			collectors.NewMountinfoCollector("/proc/self/mountinfo"),
-			collectors.NewMountinfoCollector("/proc/net/dev"),
+			collectors.NewNetdevCollector("/proc/net/dev"),
 		},
 	}
 }
