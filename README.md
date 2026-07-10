@@ -17,3 +17,5 @@ This is the idea, have ways to inquire about a compute side workload signature w
                         |
                   unified Snapshot
 ```
+
+Design guide so far: "Collectors preserve information; features interpret it; renderers present it; classifiers infer from it."
