@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ecce-machina/machina-trace/internal/collectors"
 	"github.com/ecce-machina/machina-trace/internal/diff"
+	"github.com/ecce-machina/machina-trace/internal/providers/linux"
 	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
 )
@@ -23,10 +23,10 @@ func main() {
 		runSnapshot()
 	case "diff":
 		if len(os.Args) == 4 {
-      runDiff(os.Args[2], os.Args[3], false)
-    } else if len(os.Args) == 5 && os.Args[2] == "--raw" {
-      runDiff(os.Args[3], os.Args[4], true)
-    } else {
+			runDiff(os.Args[2], os.Args[3], false)
+		} else if len(os.Args) == 5 && os.Args[2] == "--raw" {
+			runDiff(os.Args[3], os.Args[4], true)
+		} else {
 			usage()
 			os.Exit(1)
 		}
@@ -50,22 +50,12 @@ func runSnapshot() {
 		os.Exit(1)
 	}
 
-	allCollectors := []collectors.Collector{
-		collectors.NewMeminfoCollector("/proc/meminfo"),
-		collectors.NewVMStatCollector("/proc/vmstat"),
-		collectors.NewDiskstatsCollector("/proc/diskstats"),
-    collectors.NewMountinfoCollector("/proc/self/mountinfo"),
-	}
+	provider := linux.New()
 
-	var sources []snapshot.Source
-
-	for _, c := range allCollectors {
-		result, err := c.Collect()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "collector %s failed: %v\n", c.Name(), err)
-			continue
-		}
-		sources = append(sources, result...)
+	sources, err := provider.Collect()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "linux provider failed: %v\n", err)
+		os.Exit(1)
 	}
 
 	s := snapshot.Snapshot{
@@ -100,8 +90,8 @@ func runDiff(beforePath, afterPath string, raw bool) {
 	deltas := diff.DiffSnapshots(before, after)
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
-  if raw {
-    render.WriteDiffText(os.Stdout, deltas)
-  }
+	if raw {
+		render.WriteDiffText(os.Stdout, deltas)
+	}
 
 }
