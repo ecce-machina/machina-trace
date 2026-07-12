@@ -3,8 +3,12 @@ package diff
 import "github.com/ecce-machina/machina-trace/internal/snapshot"
 
 type CounterDelta struct {
+	Node        string
 	Collector   string
 	Object      string
+	Mount       string
+	StartNS     int64
+	EndNS       int64
 	IntervalSec float64
 	Deltas      map[string]int64
 	Rates       map[string]float64
@@ -14,14 +18,15 @@ func DiffSnapshots(a, b *snapshot.Snapshot) []CounterDelta {
 	old := make(map[string]snapshot.Source)
 
 	for _, src := range a.Sources {
-		key := src.Collector + "|" + src.Object + "|" + src.Mount
+		key := sourceKey(src)
 		old[key] = src
 	}
 
 	var out []CounterDelta
 
 	for _, newer := range b.Sources {
-		key := newer.Collector + "|" + newer.Object + "|" + newer.Mount
+		key := sourceKey(newer)
+
 		older, ok := old[key]
 		if !ok {
 			continue
@@ -51,8 +56,12 @@ func DiffSnapshots(a, b *snapshot.Snapshot) []CounterDelta {
 		}
 
 		out = append(out, CounterDelta{
+			Node:        b.Node,
 			Collector:   newer.Collector,
 			Object:      newer.Object,
+			Mount:       newer.Mount,
+			StartNS:     older.TimestampNS,
+			EndNS:       newer.TimestampNS,
 			IntervalSec: interval,
 			Deltas:      deltas,
 			Rates:       rates,
@@ -60,4 +69,8 @@ func DiffSnapshots(a, b *snapshot.Snapshot) []CounterDelta {
 	}
 
 	return out
+}
+
+func sourceKey(src snapshot.Source) string {
+	return src.Collector + "|" + src.Object + "|" + src.Mount
 }
