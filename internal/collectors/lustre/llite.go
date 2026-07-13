@@ -13,14 +13,32 @@ import (
 
 const collectorName = "lustre_llite_stats"
 
+type commandResult struct {
+	stdout []byte
+	stderr []byte
+}
+
 type commandRunner interface {
 	Output(name string, args ...string) ([]byte, error)
 }
 
 type execRunner struct{}
 
-func (execRunner) Output(name string, args ...string) ([]byte, error) {
-	return exec.Command(name, args...).Output()
+func (execRunner) Run(name string, args ...string) (commandResult, error) {
+	cmd := exec.Command(name, args...)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	return commandResult{
+		stdout: stdout.Bytes(),
+		stderr: stderr.Bytes(),
+	}, err
 }
 
 type LLiteCollector struct {
@@ -40,18 +58,31 @@ func (c *LLiteCollector) Name() string {
 }
 
 func (c *LLiteCollector) Collect() ([]snapshot.Source, error) {
-	output, err := c.runner.Output(
+	result, runErr := c.runner.Run(
 		c.lctlPath,
 		"get_param",
 		"llite.*.stats",
 	)
-	if err != nil {
-		return nil, fmt.Errorf("read llite stats: %w", err)
+
+	if len(result.stdout) == 0 {
+		if runErr != nil {
+			return nil, fmt.Errorf(
+				"read llite stats: %w: %s",
+				runErr,
+				strings.TrimSpace(string(result.stderr)),
+			)
+		}
+
+		return nil, fmt.Errorf("read llite stats: empty output")
 	}
 
-	sources, err := parseLLiteStats(output)
+	sources, err := parseLLiteStats(result.stdout)
 	if err != nil {
 		return nil, fmt.Errorf("parse llite stats: %w", err)
+	}
+
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("read llite stats: no llite sources found")
 	}
 
 	return sources, nil
