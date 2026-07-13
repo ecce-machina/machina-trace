@@ -19,7 +19,7 @@ type commandResult struct {
 }
 
 type commandRunner interface {
-	Output(name string, args ...string) ([]byte, error)
+	Run(name string, args ...string) (commandResult, error)
 }
 
 type execRunner struct{}
