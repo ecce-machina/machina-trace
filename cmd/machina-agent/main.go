@@ -6,10 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ecce-machina/machina-trace/internal/diff"
 	"github.com/ecce-machina/machina-trace/internal/providers/linux"
-	"github.com/ecce-machina/machina-trace/internal/providers/lustre"
-	"github.com/ecce-machina/machina-trace/internal/render"
+	lustreprovider "github.com/ecce-machina/machina-trace/internal/providers/lustre"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
 )
 
@@ -22,15 +20,6 @@ func main() {
 	switch os.Args[1] {
 	case "snapshot":
 		runSnapshot()
-	case "diff":
-		if len(os.Args) == 4 {
-			runDiff(os.Args[2], os.Args[3], false)
-		} else if len(os.Args) == 5 && os.Args[2] == "--raw" {
-			runDiff(os.Args[3], os.Args[4], true)
-		} else {
-			usage()
-			os.Exit(1)
-		}
 	default:
 		usage()
 		os.Exit(1)
@@ -40,8 +29,6 @@ func main() {
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage:\n")
 	fmt.Fprintf(os.Stderr, "  machina-agent snapshot\n")
-	fmt.Fprintf(os.Stderr, "  machina-agent diff before.json after.json\n")
-	fmt.Fprintf(os.Stderr, "  machina-agent diff --raw before.json after.json\n")
 }
 
 func runSnapshot() {
@@ -82,25 +69,4 @@ func runSnapshot() {
 	}
 }
 
-func runDiff(beforePath, afterPath string, raw bool) {
-	before, err := snapshot.ReadFile(beforePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "read %s: %v\n", beforePath, err)
-		os.Exit(1)
-	}
 
-	after, err := snapshot.ReadFile(afterPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "read %s: %v\n", afterPath, err)
-		os.Exit(1)
-	}
-
-	deltas := diff.DiffSnapshots(before, after)
-
-	render.WriteDiskFeaturesText(os.Stdout, deltas)
-	render.WriteNetworkFeaturesText(os.Stdout, deltas)
-	if raw {
-		render.WriteDiffText(os.Stdout, deltas)
-	}
-
-}
