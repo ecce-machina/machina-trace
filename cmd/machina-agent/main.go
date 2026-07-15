@@ -8,11 +8,10 @@ import (
 
 	"github.com/ecce-machina/machina-trace/internal/diff"
 	"github.com/ecce-machina/machina-trace/internal/providers/linux"
+	"github.com/ecce-machina/machina-trace/internal/providers/lustre"
 	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
-    "github.com/ecce-machina/machina-trace/internal/providers/lustre"
 )
-
 
 func main() {
 	if len(os.Args) < 2 {
@@ -60,12 +59,12 @@ func runSnapshot() {
 		os.Exit(1)
 	}
 
-    lustreSources, err := lustreprovider.New().Collect()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "lustre provider unavailable: %v\n", err)
-    } else {
-        sources = append(sources, lustreSources...)
-    }
+	lustreSources, err := lustreprovider.New().Collect()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "lustre provider unavailable: %v\n", err)
+	} else {
+		sources = append(sources, lustreSources...)
+	}
 
 	s := snapshot.Snapshot{
 		SchemaVersion: "0.1",
@@ -99,7 +98,7 @@ func runDiff(beforePath, afterPath string, raw bool) {
 	deltas := diff.DiffSnapshots(before, after)
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
-    render.WriteNetworkFeaturesText(os.Stdout, deltas)
+	render.WriteNetworkFeaturesText(os.Stdout, deltas)
 	if raw {
 		render.WriteDiffText(os.Stdout, deltas)
 	}
