@@ -20,6 +20,9 @@ func NewWithLctl(lctlPath string) *Provider {
 	return &Provider{
 		collectors: []collectors.Collector{
 			lustrecollectors.NewLLiteCollector(lctlPath),
+			lustrecollectors.NewMDCMDStatsCollector(lctlPath),
+			lustrecollectors.NewMDCStatsCollector(lctlPath),
+			lustrecollectors.NewOSCStatsCollector(lctlPath),
 		},
 	}
 }

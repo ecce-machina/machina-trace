@@ -10,7 +10,9 @@ import (
 	"github.com/ecce-machina/machina-trace/internal/providers/linux"
 	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
+    "github.com/ecce-machina/machina-trace/internal/providers/lustre"
 )
+
 
 func main() {
 	if len(os.Args) < 2 {
@@ -57,6 +59,13 @@ func runSnapshot() {
 		fmt.Fprintf(os.Stderr, "linux provider failed: %v\n", err)
 		os.Exit(1)
 	}
+
+    lustreSources, err := lustreprovider.New().Collect()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "lustre provider unavailable: %v\n", err)
+    } else {
+        sources = append(sources, lustreSources...)
+    }
 
 	s := snapshot.Snapshot{
 		SchemaVersion: "0.1",
