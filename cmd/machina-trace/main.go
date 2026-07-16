@@ -78,6 +78,10 @@ func runDiff(beforePath, afterPath string, raw bool) {
 
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
 	render.WriteNetworkFeaturesText(os.Stdout, deltas)
+	render.WriteLustreClientIOFeaturesText(os.Stdout, deltas)
+	render.WriteLustreMetadataFeaturesText(os.Stdout, deltas)
+	render.WriteLustreOSTFeaturesText(os.Stdout, deltas)
+
 	if raw {
 		render.WriteDiffText(os.Stdout, deltas)
 	}
