@@ -113,3 +113,51 @@ create 1 samples [reqs]
 		t.Fatalf("unexpected sources: %#v", sources)
 	}
 }
+
+func TestOSCStatsCollectorPreservesByteSamplesAndSum(t *testing.T) {
+	collector := NewOSCStatsCollector("lctl")
+	collector.runner = &fakeRunner{
+		result: commandResult{
+			stdout: []byte(`osc.lustrefs-OST0003-osc-abc.stats=
+snapshot_time 1784136426.715420479 secs.nsecs
+write_bytes 379 samples [bytes] 21 4194304 536876637 2251594863345723
+ost_write 379 samples [usecs] 839 340624 15700293 2556170619639
+`),
+		},
+	}
+
+	sources, err := collector.Collect()
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+
+	counters := sources[0].Counters
+
+	if counters["write_bytes_samples"] != 379 {
+		t.Fatalf(
+			"write_bytes_samples = %d, want 379",
+			counters["write_bytes_samples"],
+		)
+	}
+
+	if counters["write_bytes"] != 536876637 {
+		t.Fatalf(
+			"write_bytes = %d, want 536876637",
+			counters["write_bytes"],
+		)
+	}
+
+	if counters["ost_write"] != 379 {
+		t.Fatalf(
+			"ost_write = %d, want 379",
+			counters["ost_write"],
+		)
+	}
+
+	if counters["ost_write_usecs"] != 15700293 {
+		t.Fatalf(
+			"ost_write_usecs = %d, want 15700293",
+			counters["ost_write_usecs"],
+		)
+	}
+}
