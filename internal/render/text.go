@@ -3,7 +3,7 @@ package render
 import (
 	"fmt"
 	"io"
-    "sort"
+	"sort"
 
 	"github.com/ecce-machina/machina-trace/internal/diff"
 	"github.com/ecce-machina/machina-trace/internal/features"
@@ -194,7 +194,6 @@ func WriteLustreOSTFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 	}
 }
 
-
 func WriteDiskFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 	for _, d := range deltas {
 		f, ok := features.FromDiskstatsDelta(d)
@@ -246,3 +245,61 @@ func WriteNetworkFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 	}
 }
 
+func WriteWorkloadFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
+	var clientIO features.LustreClientIOFeatures
+	var metadata features.LustreMetadataFeatures
+	var mdc features.LustreMDCFeatures
+
+	for _, d := range deltas {
+		if f, ok := features.FromLustreLLiteDelta(d); ok {
+			clientIO.IntervalSec = f.IntervalSec
+			clientIO.ReadOpsPerSec += f.ReadOpsPerSec
+			clientIO.WriteOpsPerSec += f.WriteOpsPerSec
+			clientIO.ReadBytesPerSec += f.ReadBytesPerSec
+			clientIO.WriteBytesPerSec += f.WriteBytesPerSec
+		}
+
+		if f, ok := features.FromLustreMDCMetadataDelta(d); ok {
+			metadata.IntervalSec = f.IntervalSec
+			metadata.CreatesPerSec += f.CreatesPerSec
+			metadata.ClosesPerSec += f.ClosesPerSec
+			metadata.GetattrsPerSec += f.GetattrsPerSec
+			metadata.GetxattrsPerSec += f.GetxattrsPerSec
+			metadata.SetattrsPerSec += f.SetattrsPerSec
+			metadata.RenamesPerSec += f.RenamesPerSec
+			metadata.UnlinksPerSec += f.UnlinksPerSec
+			metadata.IntentLocksPerSec += f.IntentLocksPerSec
+			metadata.RevalidateLocksPerSec += f.RevalidateLocksPerSec
+		}
+
+		if f, ok := features.FromLustreMDCDelta(d); ok {
+			mdc.IntervalSec = f.IntervalSec
+			mdc.RequestsPerSec += f.RequestsPerSec
+			mdc.LDLMEnqueuesPerSec += f.LDLMEnqueuesPerSec
+			mdc.LDLMCancelsPerSec += f.LDLMCancelsPerSec
+		}
+	}
+
+	f := features.DeriveWorkloadFeatures(clientIO, metadata, mdc)
+
+	if f.ReadOpsPerSec == 0 &&
+		f.WriteOpsPerSec == 0 &&
+		f.MetadataOpsPerSec == 0 &&
+		f.LockOpsPerSec == 0 &&
+		f.MDCRPCsPerSec == 0 {
+		return
+	}
+
+	fmt.Fprintf(w, "workload_features interval=%.2fs\n", f.IntervalSec)
+	fmt.Fprintf(w, " read_ops_per_sec: %.2f\n", f.ReadOpsPerSec)
+	fmt.Fprintf(w, " write_ops_per_sec: %.2f\n", f.WriteOpsPerSec)
+	fmt.Fprintf(w, " read_bytes_per_sec: %.2f\n", f.ReadBytesPerSec)
+	fmt.Fprintf(w, " write_bytes_per_sec: %.2f\n", f.WriteBytesPerSec)
+	fmt.Fprintf(w, " average_read_size_bytes: %.2f\n", f.AverageReadSizeBytes)
+	fmt.Fprintf(w, " average_write_size_bytes: %.2f\n", f.AverageWriteSizeBytes)
+	fmt.Fprintf(w, " read_fraction: %.3f\n", f.ReadFraction)
+	fmt.Fprintf(w, " write_fraction: %.3f\n", f.WriteFraction)
+	fmt.Fprintf(w, " metadata_ops_per_sec: %.2f\n", f.MetadataOpsPerSec)
+	fmt.Fprintf(w, " lock_ops_per_sec: %.2f\n", f.LockOpsPerSec)
+	fmt.Fprintf(w, " mdc_rpcs_per_sec: %.2f\n", f.MDCRPCsPerSec)
+}
