@@ -81,6 +81,7 @@ func runDiff(beforePath, afterPath string, raw bool) {
 	render.WriteLustreClientIOFeaturesText(os.Stdout, deltas)
 	render.WriteLustreMetadataFeaturesText(os.Stdout, deltas)
 	render.WriteLustreOSTFeaturesText(os.Stdout, deltas)
+	render.WriteWorkloadFeaturesText(os.Stdout, deltas)
 
 	if raw {
 		render.WriteDiffText(os.Stdout, deltas)
