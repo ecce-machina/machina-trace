@@ -1,0 +1,295 @@
+package workload
+
+import (
+    "fmt"
+    "github.com/ecce-machina/machina-trace/internal/features"
+)
+// BuildProfile translates measured workload features into semantic workload
+// assessments.
+//
+// Each assessment is intentionally independent. A missing or weak signal in one
+// dimension should not prevent us from describing the dimensions that are
+// strongly supported by the evidence.
+func BuildProfile(f features.WorkloadFeatures) Profile {
+	return Profile{
+		ReadWriteBalance:  assessReadWriteBalance(f),
+		IOSize:            assessIOSize(f),
+		DataIntensity:     assessDataIntensity(f),
+		MetadataIntensity: assessMetadataIntensity(f),
+		NamespaceBehavior: assessNamespaceBehavior(f),
+		AccessPattern:     assessAccessPattern(f),
+		CacheBehavior:     assessCacheBehavior(f),
+	}
+}
+
+func assessReadWriteBalance(
+	f features.WorkloadFeatures,
+) Assessment[Balance] {
+	totalBytes := f.ReadBytesPerSec + f.WriteBytesPerSec
+
+	if totalBytes <= 0 {
+		return Assessment[Balance]{
+			Value:      BalanceUnknown,
+			Confidence: 0,
+			Evidence: []string{
+				"no read or write throughput observed",
+			},
+		}
+	}
+
+	switch {
+	case f.ReadFraction >= 0.95:
+		return Assessment[Balance]{
+			Value:      MostlyRead,
+			Confidence: f.ReadFraction,
+			Evidence: []string{
+				evidenceFloat("read_fraction", f.ReadFraction),
+				evidenceFloat("write_fraction", f.WriteFraction),
+			},
+		}
+
+	case f.ReadFraction >= 0.65:
+		return Assessment[Balance]{
+			Value:      ReadHeavy,
+			Confidence: f.ReadFraction,
+			Evidence: []string{
+				evidenceFloat("read_fraction", f.ReadFraction),
+				evidenceFloat("write_fraction", f.WriteFraction),
+			},
+		}
+
+	case f.WriteFraction >= 0.95:
+		return Assessment[Balance]{
+			Value:      MostlyWrite,
+			Confidence: f.WriteFraction,
+			Evidence: []string{
+				evidenceFloat("read_fraction", f.ReadFraction),
+				evidenceFloat("write_fraction", f.WriteFraction),
+			},
+		}
+
+	case f.WriteFraction >= 0.65:
+		return Assessment[Balance]{
+			Value:      WriteHeavy,
+			Confidence: f.WriteFraction,
+			Evidence: []string{
+				evidenceFloat("read_fraction", f.ReadFraction),
+				evidenceFloat("write_fraction", f.WriteFraction),
+			},
+		}
+
+	default:
+		// The closer the fractions are to 0.5, the stronger the evidence for a
+		// balanced workload.
+		distanceFromBalanced := abs(f.ReadFraction - 0.5)
+		confidence := clamp01(1 - (distanceFromBalanced * 2))
+
+		return Assessment[Balance]{
+			Value:      Balanced,
+			Confidence: confidence,
+			Evidence: []string{
+				evidenceFloat("read_fraction", f.ReadFraction),
+				evidenceFloat("write_fraction", f.WriteFraction),
+			},
+		}
+	}
+}
+
+func assessIOSize(
+	f features.WorkloadFeatures,
+) Assessment[SizeClass] {
+	totalOps := f.ReadOpsPerSec + f.WriteOpsPerSec
+
+	if totalOps <= 0 {
+		return Assessment[SizeClass]{
+			Value:      SizeUnknown,
+			Confidence: 0,
+			Evidence: []string{
+				"no read or write operations observed",
+			},
+		}
+	}
+
+	weightedBytes :=
+		(f.AverageReadSizeBytes * f.ReadOpsPerSec) +
+			(f.AverageWriteSizeBytes * f.WriteOpsPerSec)
+
+	averageSize := weightedBytes / totalOps
+
+	var value SizeClass
+
+	switch {
+	case averageSize < 4*1024:
+		value = SizeTiny
+	case averageSize < 64*1024:
+		value = SizeSmall
+	case averageSize < 512*1024:
+		value = SizeMedium
+	case averageSize < 2*1024*1024:
+		value = SizeLarge
+	default:
+		value = SizeHuge
+	}
+
+	return Assessment[SizeClass]{
+		Value:      value,
+		Confidence: 0.85,
+		Evidence: []string{
+			evidenceFloat("average_io_size_bytes", averageSize),
+			evidenceFloat(
+				"average_read_size_bytes",
+				f.AverageReadSizeBytes,
+			),
+			evidenceFloat(
+				"average_write_size_bytes",
+				f.AverageWriteSizeBytes,
+			),
+		},
+	}
+}
+
+func assessDataIntensity(
+	f features.WorkloadFeatures,
+) Assessment[Level] {
+	bytesPerSec := f.ReadBytesPerSec + f.WriteBytesPerSec
+	opsPerSec := f.ReadOpsPerSec + f.WriteOpsPerSec
+
+	value := classifyDataIntensity(bytesPerSec)
+
+	return Assessment[Level]{
+		Value:      value,
+		Confidence: 0.75,
+		Evidence: []string{
+			evidenceFloat("data_bytes_per_sec", bytesPerSec),
+			evidenceFloat("data_ops_per_sec", opsPerSec),
+		},
+	}
+}
+
+func assessMetadataIntensity(
+	f features.WorkloadFeatures,
+) Assessment[Level] {
+	value := classifyRate(f.MetadataOpsPerSec)
+
+	return Assessment[Level]{
+		Value:      value,
+		Confidence: 0.75,
+		Evidence: []string{
+			evidenceFloat(
+				"metadata_ops_per_sec",
+				f.MetadataOpsPerSec,
+			),
+			evidenceFloat("mdc_rpcs_per_sec", f.MDCRPCsPerSec),
+		},
+	}
+}
+
+func assessNamespaceBehavior(
+	f features.WorkloadFeatures,
+) Assessment[NamespaceBehavior] {
+	// WorkloadFeatures currently contains an aggregate metadata rate but not
+	// the individual create, unlink, rename, and lookup rates required to
+	// distinguish namespace behavior accurately.
+	//
+	// Leave this unknown rather than inferring a specific namespace pattern
+	// from lock activity alone.
+	return Assessment[NamespaceBehavior]{
+		Value:      NamespaceUnknown,
+		Confidence: 0,
+		Evidence: []string{
+			"individual create, unlink, rename, and lookup rates unavailable",
+			evidenceFloat(
+				"metadata_ops_per_sec",
+				f.MetadataOpsPerSec,
+			),
+			evidenceFloat("lock_ops_per_sec", f.LockOpsPerSec),
+		},
+	}
+}
+
+func assessAccessPattern(
+	f features.WorkloadFeatures,
+) Assessment[AccessPattern] {
+	// Large requests and high throughput may be consistent with sequential
+	// access, but they do not prove locality. Random large I/O can produce the
+	// same aggregate counters.
+	return Assessment[AccessPattern]{
+		Value:      AccessUnknown,
+		Confidence: 0,
+		Evidence: []string{
+			"no direct offset-locality or seek-distance signal available",
+		},
+	}
+}
+
+func assessCacheBehavior(
+	f features.WorkloadFeatures,
+) Assessment[CacheProfile] {
+	// The current aggregate WorkloadFeatures do not retain enough information
+	// to compare application-visible LLite activity with OSC/MDC RPC activity.
+	return Assessment[CacheProfile]{
+		Value:      CacheUnknown,
+		Confidence: 0,
+		Evidence: []string{
+			"client operation and backend RPC rates are not available together",
+		},
+	}
+}
+
+func classifyDataIntensity(bytesPerSec float64) Level {
+	switch {
+	case bytesPerSec <= 0:
+		return LevelNone
+	case bytesPerSec < 4*1024:
+		return LevelVeryLow
+	case bytesPerSec < 1024*1024:
+		return LevelLow
+	case bytesPerSec < 64*1024*1024:
+		return LevelMedium
+	case bytesPerSec < 1024*1024*1024:
+		return LevelHigh
+	default:
+		return LevelVeryHigh
+	}
+}
+
+func classifyRate(opsPerSec float64) Level {
+	switch {
+	case opsPerSec <= 0:
+		return LevelNone
+	case opsPerSec < 1:
+		return LevelVeryLow
+	case opsPerSec < 10:
+		return LevelLow
+	case opsPerSec < 100:
+		return LevelMedium
+	case opsPerSec < 1000:
+		return LevelHigh
+	default:
+		return LevelVeryHigh
+	}
+}
+
+
+func evidenceFloat(name string, value float64) string {
+	return fmt.Sprintf("%s=%.2f", name, value)
+}
+
+func clamp01(value float64) float64 {
+	switch {
+	case value < 0:
+		return 0
+	case value > 1:
+		return 1
+	default:
+		return value
+	}
+}
+
+func abs(value float64) float64 {
+	if value < 0 {
+		return -value
+	}
+
+	return value
+}
