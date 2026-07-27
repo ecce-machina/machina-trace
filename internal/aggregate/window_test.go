@@ -123,3 +123,39 @@ func TestClusterWindowRejectsEmptyNode(t *testing.T) {
 		t.Fatalf("expected ErrEmptyNode, got %v", err)
 	}
 }
+
+func TestClusterWindowWorkloadFeaturesPreservesNodes(t *testing.T) {
+	window := NewClusterWindow(1, 10)
+
+	err := window.Add(NodeObservation{
+		Node:    "client-01",
+		StartNS: 1,
+		EndNS:   10,
+	})
+	if err != nil {
+		t.Fatalf("add client-01: %v", err)
+	}
+
+	err = window.Add(NodeObservation{
+		Node:    "client-02",
+		StartNS: 1,
+		EndNS:   10,
+	})
+	if err != nil {
+		t.Fatalf("add client-02: %v", err)
+	}
+
+	got := window.WorkloadFeatures()
+
+	if len(got.Nodes) != 2 {
+		t.Fatalf("got %d nodes, want 2", len(got.Nodes))
+	}
+
+	if _, ok := got.Nodes["client-01"]; !ok {
+		t.Fatal("client-01 features missing")
+	}
+
+	if _, ok := got.Nodes["client-02"]; !ok {
+		t.Fatal("client-02 features missing")
+	}
+}
