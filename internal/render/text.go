@@ -246,41 +246,7 @@ func WriteNetworkFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 }
 
 func WriteWorkloadFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
-	var clientIO features.LustreClientIOFeatures
-	var metadata features.LustreMetadataFeatures
-	var mdc features.LustreMDCFeatures
-
-	for _, d := range deltas {
-		if f, ok := features.FromLustreLLiteDelta(d); ok {
-			clientIO.IntervalSec = f.IntervalSec
-			clientIO.ReadOpsPerSec += f.ReadOpsPerSec
-			clientIO.WriteOpsPerSec += f.WriteOpsPerSec
-			clientIO.ReadBytesPerSec += f.ReadBytesPerSec
-			clientIO.WriteBytesPerSec += f.WriteBytesPerSec
-		}
-
-		if f, ok := features.FromLustreMDCMetadataDelta(d); ok {
-			metadata.IntervalSec = f.IntervalSec
-			metadata.CreatesPerSec += f.CreatesPerSec
-			metadata.ClosesPerSec += f.ClosesPerSec
-			metadata.GetattrsPerSec += f.GetattrsPerSec
-			metadata.GetxattrsPerSec += f.GetxattrsPerSec
-			metadata.SetattrsPerSec += f.SetattrsPerSec
-			metadata.RenamesPerSec += f.RenamesPerSec
-			metadata.UnlinksPerSec += f.UnlinksPerSec
-			metadata.IntentLocksPerSec += f.IntentLocksPerSec
-			metadata.RevalidateLocksPerSec += f.RevalidateLocksPerSec
-		}
-
-		if f, ok := features.FromLustreMDCDelta(d); ok {
-			mdc.IntervalSec = f.IntervalSec
-			mdc.RequestsPerSec += f.RequestsPerSec
-			mdc.LDLMEnqueuesPerSec += f.LDLMEnqueuesPerSec
-			mdc.LDLMCancelsPerSec += f.LDLMCancelsPerSec
-		}
-	}
-
-	f := features.DeriveWorkloadFeatures(clientIO, metadata, mdc)
+	f := features.WorkloadFeaturesFromDeltas(deltas)
 
 	if f.ReadOpsPerSec == 0 &&
 		f.WriteOpsPerSec == 0 &&

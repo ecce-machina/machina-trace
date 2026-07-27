@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/ecce-machina/machina-trace/internal/diff"
+    "github.com/ecce-machina/machina-trace/internal/features"
 )
 
 var (
@@ -66,4 +67,18 @@ func (w ClusterWindow) Deltas() []diff.CounterDelta {
 	}
 
 	return out
+}
+
+// WorkloadFeatures derives per-node workload features and the corresponding
+// filesystem-wide aggregate for this cluster window.
+func (w ClusterWindow) WorkloadFeatures() FilesystemFeatures {
+	nodes := make(map[string]features.WorkloadFeatures, len(w.Nodes))
+
+	for node, observation := range w.Nodes {
+		nodes[node] = features.WorkloadFeaturesFromDeltas(
+			observation.Deltas,
+		)
+	}
+
+	return AggregateWorkloadFeatures(nodes)
 }
