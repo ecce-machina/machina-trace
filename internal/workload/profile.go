@@ -78,3 +78,22 @@ type Profile struct {
 	NamespaceBehavior Assessment[NamespaceProfile]
 	CacheBehavior     Assessment[CacheProfile]
 }
+
+func (v Level) String() string {
+	switch v {
+	case LevelNone:
+		return "none"
+	case LevelVeryLow:
+		return "very_low"
+	case LevelLow:
+		return "low"
+	case LevelMedium:
+		return "medium"
+	case LevelHigh:
+		return "high"
+	case LevelVeryHigh:
+		return "very_high"
+	default:
+		return "unknown"
+	}
+}

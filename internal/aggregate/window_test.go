@@ -159,3 +159,95 @@ func TestClusterWindowWorkloadFeaturesPreservesNodes(t *testing.T) {
 		t.Fatal("client-02 features missing")
 	}
 }
+
+func TestClusterWindowWorkloadFeaturesEndToEnd(t  *testing.T) {
+
+    const interval = 10.0
+
+	client1, ok := NewNodeObservation([]diff.CounterDelta{
+		{
+			Node:        "client-01",
+			Collector:   "lustre_llite_stats",
+			Object:      "lustrefs-client",
+			StartNS:     0,
+			EndNS:       10_000_000_000,
+			IntervalSec: interval,
+			Rates: map[string]float64{
+				"write":       10,
+				"write_bytes": 100 * 1024,
+			},
+		},
+	})
+	if !ok {
+		t.Fatal("failed to build client-01 observation")
+	}
+
+	client2, ok := NewNodeObservation([]diff.CounterDelta{
+		{
+			Node:        "client-02",
+			Collector:   "lustre_llite_stats",
+			Object:      "lustrefs-client",
+			StartNS:     0,
+			EndNS:       10_000_000_000,
+			IntervalSec: interval,
+			Rates: map[string]float64{
+				"write":       30,
+				"write_bytes": 300 * 1024,
+			},
+		},
+	})
+	if !ok {
+		t.Fatal("failed to build client-02 observation")
+	}
+
+	window := NewClusterWindow(0, 10_000_000_000)
+
+	if err := window.Add(client1); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := window.Add(client2); err != nil {
+		t.Fatal(err)
+	}
+
+	fs := window.WorkloadFeatures()
+
+	if len(fs.Nodes) != 2 {
+		t.Fatalf("got %d nodes, want 2", len(fs.Nodes))
+	}
+
+	assertFloat(
+		t,
+		"client-01 WriteBytesPerSec",
+		fs.Nodes["client-01"].WriteBytesPerSec,
+		100*1024,
+	)
+
+	assertFloat(
+		t,
+		"client-02 WriteBytesPerSec",
+		fs.Nodes["client-02"].WriteBytesPerSec,
+		300*1024,
+	)
+
+	assertFloat(
+		t,
+		"aggregate WriteBytesPerSec",
+		fs.Aggregate.WriteBytesPerSec,
+		400*1024,
+	)
+
+	assertFloat(
+		t,
+		"aggregate WriteOpsPerSec",
+		fs.Aggregate.WriteOpsPerSec,
+		40,
+	)
+
+	assertFloat(
+		t,
+		"aggregate AverageWriteSizeBytes",
+		fs.Aggregate.AverageWriteSizeBytes,
+		10*1024,
+	)
+}
