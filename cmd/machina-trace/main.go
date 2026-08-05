@@ -5,8 +5,10 @@ import (
 	"os"
 
 	"github.com/ecce-machina/machina-trace/internal/diff"
+	"github.com/ecce-machina/machina-trace/internal/features"
 	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
+	"github.com/ecce-machina/machina-trace/internal/workload"
 )
 
 func main() {
@@ -76,12 +78,16 @@ func runDiff(beforePath, afterPath string, raw bool) {
 
 	deltas := diff.DiffSnapshots(before, after)
 
+	workloadFeatures := features.WorkloadFeaturesFromDeltas(deltas)
+	profile := workload.BuildProfile(workloadFeatures)
+
 	render.WriteDiskFeaturesText(os.Stdout, deltas)
 	render.WriteNetworkFeaturesText(os.Stdout, deltas)
 	render.WriteLustreClientIOFeaturesText(os.Stdout, deltas)
 	render.WriteLustreMetadataFeaturesText(os.Stdout, deltas)
 	render.WriteLustreOSTFeaturesText(os.Stdout, deltas)
-	render.WriteWorkloadFeaturesText(os.Stdout, deltas)
+	render.WriteWorkloadFeaturesText(os.Stdout, workloadFeatures)
+	render.WriteWorkloadProfileText(os.Stdout, profile)
 
 	if raw {
 		render.WriteDiffText(os.Stdout, deltas)

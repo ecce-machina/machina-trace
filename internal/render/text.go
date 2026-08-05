@@ -245,8 +245,7 @@ func WriteNetworkFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
 	}
 }
 
-func WriteWorkloadFeaturesText(w io.Writer, deltas []diff.CounterDelta) {
-	f := features.WorkloadFeaturesFromDeltas(deltas)
+func WriteWorkloadFeaturesText(w io.Writer, f features.WorkloadFeatures) {
 
 	if f.ReadOpsPerSec == 0 &&
 		f.WriteOpsPerSec == 0 &&
