@@ -26,7 +26,11 @@ func main() {
 			os.Exit(2)
 		}
 		runDiff(beforePath, afterPath, raw)
-
+	case "cluster":
+		if len(os.Args) != 4 {
+			usage()
+		}
+		runCluster(os.Args[2], os.Args[3])
 	default:
 		usage()
 		os.Exit(2)
@@ -61,6 +65,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage:")
 	fmt.Fprintln(os.Stderr, "  machina-trace diff before.json after.json")
 	fmt.Fprintln(os.Stderr, "  machina-trace diff --raw before.json after.json")
+	fmt.Fprintln(os.Stderr, "  machina-trace cluster before-dir/ after-dir/")
 }
 
 func runDiff(beforePath, afterPath string, raw bool) {
