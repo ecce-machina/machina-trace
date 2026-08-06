@@ -7,8 +7,9 @@ import (
 
 	"github.com/ecce-machina/machina-trace/internal/aggregate"
 	"github.com/ecce-machina/machina-trace/internal/diff"
-	"github.com/ecce-machina/machina-trace/internal/snapshot"
+	"github.com/ecce-machina/machina-trace/internal/distribution"
 	"github.com/ecce-machina/machina-trace/internal/render"
+	"github.com/ecce-machina/machina-trace/internal/snapshot"
 	"github.com/ecce-machina/machina-trace/internal/workload"
 )
 
@@ -27,8 +28,12 @@ func runCluster(beforeDir, afterDir string) {
 
 	fs := window.WorkloadFeatures()
 
+	result := distribution.Analyze(fs)
+
 	profile := workload.BuildProfile(fs.Aggregate)
 	render.WriteWorkloadProfileText(os.Stdout, profile)
+
+	fmt.Printf("write concentration: %.3f\n", result.WriteConcentration)
 
 	fmt.Printf("loaded %d nodes\n", len(window.Nodes))
 }
