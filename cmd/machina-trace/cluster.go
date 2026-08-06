@@ -7,8 +7,8 @@ import (
 
 	"github.com/ecce-machina/machina-trace/internal/aggregate"
 	"github.com/ecce-machina/machina-trace/internal/diff"
-	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/snapshot"
+	"github.com/ecce-machina/machina-trace/internal/render"
 	"github.com/ecce-machina/machina-trace/internal/workload"
 )
 
@@ -33,10 +33,15 @@ func runCluster(beforeDir, afterDir string) {
 	fmt.Printf("loaded %d nodes\n", len(window.Nodes))
 }
 
-func buildClusterWindow(pairs []pair) (aggregate.ClusterWindow, error) {
-	var window aggregate.ClusterWindow
+func buildClusterWindow(
+	pairs []pair,
+) (aggregate.ClusterWindow, error) {
+	observations := make([]aggregate.NodeObservation, 0, len(pairs))
 
-	for i, p := range pairs {
+	var windowStart int64
+	var windowEnd int64
+
+	for _, p := range pairs {
 		before, err := snapshot.ReadFile(p.Before)
 		if err != nil {
 			return aggregate.ClusterWindow{}, fmt.Errorf(
@@ -55,6 +60,14 @@ func buildClusterWindow(pairs []pair) (aggregate.ClusterWindow, error) {
 			)
 		}
 
+		if before.Node != after.Node {
+			return aggregate.ClusterWindow{}, fmt.Errorf(
+				"snapshot node mismatch: before=%q after=%q",
+				before.Node,
+				after.Node,
+			)
+		}
+
 		deltas := diff.DiffSnapshots(before, after)
 
 		observation, ok := aggregate.NewNodeObservation(deltas)
@@ -66,13 +79,20 @@ func buildClusterWindow(pairs []pair) (aggregate.ClusterWindow, error) {
 			)
 		}
 
-		if i == 0 {
-			window = aggregate.NewClusterWindow(
-				observation.StartNS,
-				observation.EndNS,
-			)
+		observations = append(observations, observation)
+
+		if len(observations) == 1 || observation.StartNS < windowStart {
+			windowStart = observation.StartNS
 		}
 
+		if len(observations) == 1 || observation.EndNS > windowEnd {
+			windowEnd = observation.EndNS
+		}
+	}
+
+	window := aggregate.NewClusterWindow(windowStart, windowEnd)
+
+	for _, observation := range observations {
 		if err := window.Add(observation); err != nil {
 			return aggregate.ClusterWindow{}, fmt.Errorf(
 				"add node %q: %w",
@@ -80,10 +100,6 @@ func buildClusterWindow(pairs []pair) (aggregate.ClusterWindow, error) {
 				err,
 			)
 		}
-	}
-
-	if len(pairs) == 0 {
-		return aggregate.NewClusterWindow(0, 0), nil
 	}
 
 	return window, nil
